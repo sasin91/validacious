@@ -1,23 +1,59 @@
 <?php
-
 /**
- * Validation Class
- *
- * Handles form validation logic, rule parsing, and error reporting.
- * Coordinates with Validation_model for rule execution.
+ * Validation Module - Framework Service for Form Validation
+ * 
+ * This module provides validation functionality as a framework service.
+ * It is accessed exclusively via Service Routing from helper functions.
+ * 
+ * Security: Uses BASE_URL check instead of block_url() to minimize dependencies
+ * and maximize performance for core framework services.
  */
+
+// Prevent direct script access - lightweight security check
+if (!defined('BASE_URL')) {
+    exit('No direct script access allowed');
+}
+
 class Validation extends Trongate {
 
+    /**
+     * Array of form submission errors
+     * 
+     * @var array<string, array<string>>
+     */
     public array $form_submission_errors = [];
+
+    /**
+     * Array of posted fields with their labels
+     * 
+     * @var array<string, string>
+     */
     public array $posted_fields = [];
+
+    /**
+     * Caller object for callback methods
+     * 
+     * @var object|null
+     */
     private ?object $caller = null;
 
+    /**
+     * Constructor for Validation class
+     * 
+     * @param string|null $module_name The module name
+     * @param object|null $caller The calling controller instance for callbacks
+     */
     public function __construct(?string $module_name = null, ?object $caller = null) {
         parent::__construct($module_name);
         $this->caller = $caller;
-        block_url('validation');
     }
 
+    /**
+     * Sets the validation language for error messages
+     * 
+     * @param string $lang The language code (e.g., 'en', 'fr', 'es')
+     * @return void
+     */
     public function set_language(string $lang): void {
         $_SESSION['validation_lang'] = $lang;
         $this->model->load_validation_language($lang);
@@ -37,6 +73,9 @@ class Validation extends Trongate {
 
     /**
      * Sets the calling controller instance to allow for callback methods.
+     * 
+     * @param object $caller The calling controller instance
+     * @return void
      */
     public function set_caller(object $caller): void {
         $this->caller = $caller;
@@ -44,6 +83,11 @@ class Validation extends Trongate {
 
     /**
      * Configures validation rules for a specific field.
+     * 
+     * @param string $key The field name/key
+     * @param string $label The human-readable field label
+     * @param string $rules The validation rules string (pipe-separated)
+     * @return void
      */
     public function set_rules(string $key, string $label, string $rules): void {
         $validation_data['key'] = $key;
@@ -75,6 +119,9 @@ class Validation extends Trongate {
 
     /**
      * Parses and executes a single validation rule.
+     * 
+     * @param array<string, mixed> $validation_data The validation data array
+     * @return void
      */
     private function run_validation_test(array $validation_data): void {
         $test_to_run = $validation_data['test_to_run'];
@@ -154,7 +201,8 @@ class Validation extends Trongate {
     /**
      * Finalizes validation. Returns true if no errors found.
      * Supports passing an array of rules directly (Option 2 syntax).
-     * * @param array|null $rules Optional associative array of validation rules
+     * 
+     * @param array<string, array<string, mixed>>|null $rules Optional associative array of validation rules
      * @return bool True if validation passes, false otherwise
      */
     public function run(?array $rules = null): bool {
@@ -197,7 +245,20 @@ class Validation extends Trongate {
         return true;
     }
 
-    public function display_errors($first_arg = null, $closing_html = null): ?string {
+    /**
+     * Displays validation errors in various formats.
+     * 
+     * Supports three render types:
+     * 1. JSON: When first argument is an HTTP error code (400-499)
+     * 2. Inline: When only first argument is provided (field name)
+     * 3. Standard: When both opening and closing HTML tags are provided
+     * 
+     * @param array<string, mixed> $data The data array containing render parameters
+     * @return string|null The rendered error HTML or null if no errors
+     */
+    public function display_errors(array $data = []): ?string {
+        $first_arg = $data['first_arg'] ?? null;
+        $closing_html = $data['closing_html'] ?? null;
         $render_type = $this->get_render_type($first_arg, $closing_html);
 
         if ($render_type === 'null') {
@@ -213,7 +274,14 @@ class Validation extends Trongate {
         };
     }
 
-    private function json_validation_errors(array $errors, int $http_code): void {
+    /**
+     * Renders validation errors as JSON response with HTTP error code.
+     * 
+     * @param array<string, array<string>> $errors The validation errors array
+     * @param int $http_code The HTTP status code (400-499)
+     * @return string Empty string (outputs JSON directly)
+     */
+    private function json_validation_errors(array $errors, int $http_code): string {
         http_response_code($http_code);
         header('Content-Type: application/json');
         echo json_encode($errors);
@@ -221,8 +289,16 @@ class Validation extends Trongate {
         // RENDERED = DELETED
         // unset($_SESSION['form_submission_errors']);
         // die();
+        return '';
     }
 
+    /**
+     * Renders inline validation errors for a specific field.
+     * 
+     * @param array<string, array<string>> $errors The validation errors array
+     * @param string $field The field name to display errors for
+     * @return string The HTML for inline validation errors
+     */
     private function inline_validation_errors(array $errors, string $field): string {
         if (!isset($errors[$field])) {
             return '';
@@ -245,6 +321,14 @@ class Validation extends Trongate {
         return $html;
     }
 
+    /**
+     * Renders general validation errors as a summary list.
+     * 
+     * @param array<string, array<string>> $errors The validation errors array
+     * @param string|null $open The opening HTML tag for each error
+     * @param string|null $close The closing HTML tag for each error
+     * @return string The HTML for general validation errors
+     */
     private function general_validation_errors(array $errors, ?string $open = null, ?string $close = null): string {
         $open  = $open ?? (defined('ERROR_OPEN') ? ERROR_OPEN : '<li>');
         $close = $close ?? (defined('ERROR_CLOSE') ? ERROR_CLOSE : '</li>');
@@ -263,6 +347,13 @@ class Validation extends Trongate {
         return $html;
     }
 
+    /**
+     * Determines the render type based on input parameters.
+     * 
+     * @param mixed $first_arg The first argument passed to display_errors
+     * @param mixed $closing_html The closing HTML tag argument
+     * @return string The render type: 'json', 'inline', 'standard', or 'null'
+     */
     private function get_render_type($first_arg, $closing_html): string {
         if (!isset($_SESSION['form_submission_errors'])) {
             return 'null';
@@ -281,6 +372,8 @@ class Validation extends Trongate {
 
     /**
      * Generates JS injection for automatic error highlighting.
+     * 
+     * @return string The JavaScript injection HTML
      */
     public function get_js_injection(): string {
         if (!isset($_SESSION['form_submission_errors'])) {

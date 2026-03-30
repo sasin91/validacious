@@ -7,8 +7,18 @@
  */
 class Validation_model extends Model {
 
+    /**
+     * Array of validation error messages loaded from language files
+     * 
+     * @var array<string, string>
+     */
     private array $validation_error_messages = [];
 
+    /**
+     * Constructor for Validation_model
+     * 
+     * Initializes the model and loads the appropriate validation language.
+     */
     public function __construct() {
         parent::__construct();
         $lang = $this->get_validation_language();
@@ -18,6 +28,11 @@ class Validation_model extends Model {
     /**
      * Main execution point for a single rule.
      * Checks if the field is a file or standard post data.
+     * 
+     * @param string $rule The validation rule to execute
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
      */
     public function execute_rule(string $rule, array $data, array $errors): array {
         // Handle File/Image Validation
@@ -38,6 +53,11 @@ class Validation_model extends Model {
 
     /**
      * Handles File and Image specific validation logic.
+     * 
+     * @param string $rule The validation rule to execute
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
      */
     private function run_file_rule(string $rule, array $data, array $errors): array {
         // Ensure we are grabbing the file data from the right place
@@ -103,6 +123,15 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Handles image-specific validation rules using the Image module.
+     * 
+     * @param string $rule The image validation rule to execute
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, mixed> $file The file data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     private function run_image_rule(string $rule, array $data, array $file, array $errors): array {
         if ($file['error'] !== UPLOAD_ERR_OK) {
             return $errors;
@@ -171,6 +200,9 @@ class Validation_model extends Model {
     /**
      * Scans file content for malicious patterns.
      * Essential for security - scans ALL files, not just images.
+     * 
+     * @param string $file_path The path to the temporary uploaded file
+     * @return bool True if file is safe, false if malicious patterns detected
      */
     private function scan_file_content(string $file_path): bool {
         // Read first 4096 bytes for better detection
@@ -209,6 +241,13 @@ class Validation_model extends Model {
 
     /* --- Core Post Rules --- */
 
+    /**
+     * Validates that a field is required (not empty).
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function required(array $data, array $errors): array {
         $value = $data['posted_value'] ?? '';
         
@@ -223,6 +262,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains a numeric value.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function numeric(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && !is_numeric($data['posted_value'])) {
             $errors[$data['key']][] = $this->get_error_message('numeric', $data);
@@ -230,6 +276,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains an integer value.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function integer(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && !filter_var($data['posted_value'], FILTER_VALIDATE_INT)) {
             $errors[$data['key']][] = $this->get_error_message('integer', $data);
@@ -237,6 +290,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains a decimal value.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function decimal(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && !is_numeric($data['posted_value'])) {
             $errors[$data['key']][] = $this->get_error_message('decimal', $data);
@@ -244,6 +304,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains a valid email address.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function valid_email(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && !filter_var($data['posted_value'], FILTER_VALIDATE_EMAIL)) {
             $errors[$data['key']][] = $this->get_error_message('valid_email', $data);
@@ -251,6 +318,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains a valid URL.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function valid_url(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && !filter_var($data['posted_value'], FILTER_VALIDATE_URL)) {
             $errors[$data['key']][] = $this->get_error_message('valid_url', $data);
@@ -258,6 +332,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains a valid IP address.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function valid_ip(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && !filter_var($data['posted_value'], FILTER_VALIDATE_IP)) {
             $errors[$data['key']][] = $this->get_error_message('valid_ip', $data);
@@ -267,6 +348,13 @@ class Validation_model extends Model {
 
     /* --- Length Rules --- */
 
+    /**
+     * Validates that a field has a minimum length.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function min_length(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && strlen($data['posted_value']) < (int)$data['param']) {
             $errors[$data['key']][] = $this->get_error_message('min_length', $data);
@@ -274,6 +362,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field has a maximum length.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function max_length(array $data, array $errors): array {
         if (strlen($data['posted_value'] ?? '') > (int)$data['param']) {
             $errors[$data['key']][] = $this->get_error_message('max_length', $data);
@@ -281,6 +376,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field has an exact length.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function exact_length(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && strlen($data['posted_value']) !== (int)$data['param']) {
             $errors[$data['key']][] = $this->get_error_message('exact_length', $data);
@@ -290,6 +392,13 @@ class Validation_model extends Model {
 
     /* --- Comparison Rules --- */
 
+    /**
+     * Validates that a field matches another field's value.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function matches(array $data, array $errors): array {
         $other_field_value = post($data['param'], true);
         if (($data['posted_value'] ?? '') !== $other_field_value) {
@@ -298,6 +407,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field value is greater than a specified number.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function greater_than(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && (float)$data['posted_value'] <= (float)$data['param']) {
             $errors[$data['key']][] = $this->get_error_message('greater_than', $data);
@@ -305,6 +421,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field value is less than a specified number.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function less_than(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '' && (float)$data['posted_value'] >= (float)$data['param']) {
             $errors[$data['key']][] = $this->get_error_message('less_than', $data);
@@ -314,6 +437,13 @@ class Validation_model extends Model {
 
     /* --- Date/Time Rules --- */
 
+    /**
+     * Validates that a field contains a valid date in YYYY-MM-DD format.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function valid_date(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '') {
             $d = DateTime::createFromFormat('Y-m-d', $data['posted_value']);
@@ -324,6 +454,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains a valid time in HH:MM or HH:MM:SS format.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function valid_time(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '') {
             // Accept HH:MM or HH:MM:SS
@@ -336,6 +473,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains a valid datetime-local in YYYY-MM-DDTHH:MM format.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function valid_datetime_local(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '') {
             $d = DateTime::createFromFormat('Y-m-d\TH:i', $data['posted_value']);
@@ -346,6 +490,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains a valid month in YYYY-MM format.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function valid_month(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '') {
             $d = DateTime::createFromFormat('Y-m', $data['posted_value']);
@@ -356,6 +507,13 @@ class Validation_model extends Model {
         return $errors;
     }
 
+    /**
+     * Validates that a field contains a valid week in YYYY-Www format.
+     * 
+     * @param array<string, mixed> $data The validation data array
+     * @param array<string, array<string>> $errors The current errors array
+     * @return array<string, array<string>> The updated errors array
+     */
     public function valid_week(array $data, array $errors): array {
         if (($data['posted_value'] ?? '') !== '') {
             if (!preg_match('/^\d{4}-W\d{2}$/', $data['posted_value'])) {
@@ -370,6 +528,8 @@ class Validation_model extends Model {
     /**
      * Determines the current validation language.
      * Priority: Session > Constant > Default (en)
+     * 
+     * @return string The language code (e.g., 'en', 'fr', 'es')
      */
     private function get_validation_language(): string {
         if (isset($_SESSION['validation_lang'])) {
@@ -379,6 +539,12 @@ class Validation_model extends Model {
         return (defined('VALIDATION_LANG')) ? VALIDATION_LANG : 'en';
     }
 
+    /**
+     * Loads validation error messages from language files.
+     * 
+     * @param string $lang The language code to load
+     * @return void
+     */
     public function load_validation_language(string $lang): void {
         $path = APPPATH . 'modules/validation/language/' . $lang . '/validation_errors.php';
         
@@ -392,6 +558,15 @@ class Validation_model extends Model {
         }
     }
 
+    /**
+     * Gets the error message for a validation rule.
+     * 
+     * Maps rule names to language keys and replaces placeholders with actual values.
+     * 
+     * @param string $rule The validation rule name
+     * @param array<string, mixed> $data The validation data array
+     * @return string The formatted error message
+     */
     private function get_error_message(string $rule, array $data): string {
         // Map rule names to language keys
         $key_map = [
@@ -439,6 +614,10 @@ class Validation_model extends Model {
     /**
      * Resolves a custom error message from a callback.
      * Checks the loaded language array for a matching key.
+     * 
+     * @param string $result The result string from a callback validation
+     * @param array<string, mixed> $data The validation data array
+     * @return string The resolved error message with placeholders replaced
      */
     public function resolve_error_message(string $result, array $data): string {
         // Look for the exact string returned by the callback in our language array
