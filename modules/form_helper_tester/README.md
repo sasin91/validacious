@@ -1,53 +1,125 @@
 # Form Helper Tester Module
 
-This module provides unit tests for the `form_helper` functions in the Trongate framework.
-
-## Purpose
-
-The `form_helper` functions were found to have bugs where they ignored certain parameters, potentially causing form fields to be generated without proper attributes, leading to missing POST data or incorrect HTML.
-
-This tester module verifies that all form helper functions work correctly.
+Comprehensive unit tests for all `form_helper` functions in the Trongate framework.
 
 ## Usage
 
 1. Navigate to `/form_helper_tester` in your browser.
-2. The page will display test results for each form helper function.
-3. Green results indicate the function correctly generates expected HTML.
-4. Red results indicate a failure.
+2. Results are grouped by helper in official docs order, showing test description, expected, actual, and PASS/FAIL/SKIP per assertion.
 
 ## Tests Performed
 
-The module tests all public `form_helper` functions:
+### form_button()
+- Generates `<button>` element
+- Label text present in output
+- Extra attributes applied
+- No value: still generates button
 
-- **form_input**: Checks that `name`, `value`, and additional attributes are included.
-- **form_password**: Verifies `name`, `value`, and `type="password"`.
-- **form_email**: Checks `name`, `value`, and `type="email"`.
-- **form_search**: Verifies `name`, `value`, and `type="search"`.
-- **form_number**: Checks `name`, `value` (converted to string), and `type="number"`.
-- **form_input_no_value**: Ensures `name` is present but `value` is omitted when null.
-- **form_checkbox**: Tests `name`, `value`, `checked` attribute when true, and `type="checkbox"`.
-- **form_radio**: Similar to checkbox but `type="radio"`.
-- **form_hidden**: Verifies `name`, `value`, and `type="hidden"`.
-- **form_open**: Checks for `<form>`, `action`, `method="post"`, and additional attributes.
-- **form_open_upload**: Includes `enctype="multipart/form-data"`.
-- **form_close**: Verifies `</form>` tag.
-- **form_label**: Tests `<label>`, `for` attribute, content, and additional attributes.
-- **form_textarea**: Checks `name`, content between tags, and attributes.
-- **form_date**: Verifies `name`, `value`, and `type="date"`.
-- **form_datetime_local**: Checks `name`, `value`, and `type="datetime-local"`.
-- **form_time**: Verifies `name`, `value`, and `type="time"`.
-- **form_month**: Checks `name`, `value`, and `type="month"`.
-- **form_week**: Verifies `name`, `value`, and `type="week"`.
-- **form_submit**: Tests `name`, `value`, and `type="submit"`.
+### form_checkbox()
+- Has `type="checkbox"`, correct name/value
+- Checked state applied
+- Unchecked: no `checked` attribute
+- Default value is `"1"`
+- Truthy string `"1"` treated as checked
 
-## Troubleshooting
+### form_close()
+- Contains closing `</form>` tag
 
-- If tests fail, check that the `form_helper.php` has been updated with the fixes.
-- Ensure the `modules/form/Form.php` module correctly handles the attributes passed from the helper.
-- Clear any cached files or restart the web server if changes don't take effect.
-- Some tests may fail if BASE_URL is not set correctly (for form_open tests).
+### form_date()
+- Has `type="date"`, correct name/value
+- Extra attributes applied
+- Null value: no `value` attribute
+
+### form_datetime_local()
+- Has `type="datetime-local"`, correct name/value
+
+### form_dropdown()
+- Contains `<select>`, correct name/id
+- All option values and labels present
+- `selected` attribute applied to chosen option
+- No selection: no `selected` attribute
+
+### form_email()
+- Has `type="email"`, correct name/value
+- Null value: no `value` attribute
+
+### form_file_select()
+- Has `type="file"`, extra attributes applied
+- Accept attribute rendered
+
+### form_hidden()
+- Has `type="hidden"`, correct name/value, extra attributes
+- Integer value rendered as string
+- Null value: element still generated
+
+### form_input()
+- Correct name, value, and extra attributes
+- Null value: no `value` attribute
+- Empty string: `value=""` present
+- XSS in value: raw `<` not present in attribute
+
+### form_label()
+- Contains `<label>`, `for` attribute, class, text, `</label>`
+- No attributes: text still rendered
+
+### form_month()
+- Has `type="month"`, correct name/value
+
+### form_number()
+- Has `type="number"`, correct name/value, `min`/`max` attributes
+- Float value rendered correctly
+- Null value: no `value` attribute
+
+### form_open()
+- Contains `<form>`, `action=`, location URL, `method="post"`, extra attributes
+
+### form_open_upload()
+- Contains `<form>`, `method="post"`, `enctype="multipart/form-data"`, location, extra attributes
+
+### form_password()
+- Has `type="password"`, correct name/value
+- Null value: no `value` attribute
+
+### form_radio()
+- Has `type="radio"`, correct name/value
+- Checked/unchecked state
+
+### form_search()
+- Has `type="search"`, correct name/value
+- Null value: no `value` attribute
+
+### form_submit()
+- Has `type="submit"`, correct name/value, extra attributes
+- Null value: element still generated
+
+### form_textarea()
+- Contains `<textarea>`, correct name, id, rows, cols
+- Value placed between opening and closing tags
+- Null value: textarea still generated
+
+### form_time()
+- Has `type="time"`, correct name/value
+
+### form_week()
+- Has `type="week"`, correct name/value
+
+### post() *(partially testable)*
+- No POST data: returns empty array or empty string
+- Missing key returns empty string
+- **SKIPPED**: POST field retrieval (requires form submission context)
+- **SKIPPED**: `clean_up=true`, `cast_numeric=true` modes
+
+### validation_errors() *(partially testable)*
+- No validation errors: returns `null`
+- **SKIPPED**: errors with actual failed validation (requires `validation_run()` context)
+- **SKIPPED**: custom HTML wrapping test
+
+## Notes
+
+- SKIPPED tests are not counted as failures — they are environment-dependent and cannot be exercised in a GET page context.
+- `form_file_select()` passes `$name` as first arg but the engine service may not include it in the `name` attribute — verify in output if needed.
 
 ## Dependencies
 
-- Requires the `form` module to be available.
-- Assumes `form_helper.php` is loaded (typically auto-loaded in Trongate).
+- Requires the `form` module and `validation` module to be available.
+- Assumes `form_helper.php` is loaded (auto-loaded in Trongate).

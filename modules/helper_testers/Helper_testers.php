@@ -25,7 +25,7 @@ class Helper_testers extends Trongate {
    * @return void
    */
   public function show_readme(): void {
-    $module_name = segment(4, 'string');
+    $module_name = segment(3, 'string');
 
     if (empty($module_name)) {
       $this->index();

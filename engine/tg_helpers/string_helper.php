@@ -72,7 +72,7 @@ function remove_substr_between(string $start, string $end, string $haystack, boo
  * @param string|null $currency_symbol The optional currency symbol to be added.
  * @return string|float The formatted nice price.
  */
-function nice_price(float $num, ?string $currency_symbol = null): string|float {
+function nice_price(float $num, ?string $currency_symbol = null): string {
     $data = ['num' => $num, 'currency_symbol' => $currency_symbol];
     return Modules::run('string_service/nice_price', $data);
 }

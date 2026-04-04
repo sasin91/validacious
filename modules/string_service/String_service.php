@@ -25,11 +25,11 @@ class String_service extends Trongate {
     public function truncate_str(array $data): string {
         $value = $data['value'] ?? '';
         $max_length = $data['max_length'] ?? 0;
-        
-        if (strlen($value) <= $max_length) {
+
+        if (mb_strlen($value, 'UTF-8') <= $max_length) {
             return $value;
         } else {
-            return substr($value, 0, $max_length) . '...';
+            return mb_substr($value, 0, $max_length, 'UTF-8') . '...';
         }
     }
 
@@ -42,8 +42,9 @@ class String_service extends Trongate {
     public function truncate_words(array $data): string {
         $value = $data['value'] ?? '';
         $max_words = $data['max_words'] ?? 0;
-        
-        $words = explode(' ', $value);
+
+        // Use preg_split so multiple consecutive spaces don't create phantom empty-string "words".
+        $words = preg_split('/\s+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
 
         if (count($words) <= $max_words) {
             return $value;
@@ -113,14 +114,24 @@ class String_service extends Trongate {
             if ($end_pos === false) {
                 return $haystack;
             }
-            return substr($haystack, 0, $start_pos) . substr($haystack, $end_pos + strlen($end));
+            $result = substr($haystack, 0, $start_pos) . substr($haystack, $end_pos + strlen($end));
+            // If the removed block sat between two spaces, one trailing space remains — trim one leading space after the cut point.
+            if ($start_pos > 0 && $haystack[$start_pos - 1] === ' ' && isset($result[$start_pos]) && $result[$start_pos] === ' ') {
+                $result = substr($result, 0, $start_pos) . substr($result, $start_pos + 1);
+            }
+            return $result;
         } else {
             while (($start_pos = strpos($haystack, $start)) !== false) {
                 $end_pos = strpos($haystack, $end, $start_pos + strlen($start));
                 if ($end_pos === false) {
                     break;
                 }
-                $haystack = substr($haystack, 0, $start_pos) . substr($haystack, $end_pos + strlen($end));
+                $removed = substr($haystack, 0, $start_pos) . substr($haystack, $end_pos + strlen($end));
+                // Collapse double-space left behind when block was between spaces.
+                if ($start_pos > 0 && $haystack[$start_pos - 1] === ' ' && isset($removed[$start_pos]) && $removed[$start_pos] === ' ') {
+                    $removed = substr($removed, 0, $start_pos) . substr($removed, $start_pos + 1);
+                }
+                $haystack = $removed;
             }
             return $haystack;
         }
@@ -132,7 +143,7 @@ class String_service extends Trongate {
      * @param array $data Array containing 'num' and 'currency_symbol' keys.
      * @return string|float The formatted nice price.
      */
-    public function nice_price(array $data): string|float {
+    public function nice_price(array $data): string {
         $num = $data['num'] ?? 0.0;
         $currency_symbol = $data['currency_symbol'] ?? null;
         
@@ -326,7 +337,8 @@ class String_service extends Trongate {
         $opening_pattern = $data['opening_pattern'] ?? '';
         $closing_pattern = $data['closing_pattern'] ?? '';
         
-        $pattern = '/(' . preg_quote($opening_pattern, '/') . ')(.*?)(\s*?' . preg_quote($closing_pattern, '/') . ')/is';
+        // Use \s* (greedy) — lazy \s*? had no practical effect and was misleading.
+        $pattern = '/(' . preg_quote($opening_pattern, '/') . ')(.*?)(\s*' . preg_quote($closing_pattern, '/') . ')/is';
         return preg_replace($pattern, '', $content);
     }
 
@@ -382,10 +394,13 @@ class String_service extends Trongate {
         // Apply XSS filtering
         $name = htmlspecialchars($name);
 
-        // Create a regex pattern that includes the allowed characters
-        $pattern = '/[^a-zA-Z0-9\s';
-        $pattern .= !empty($allowed_chars) ? '[' . implode('', $allowed_chars) . ']' : ']';
-        $pattern .= '/';
+        // Create a regex character class that includes any explicitly allowed characters.
+        // preg_quote() prevents regex injection from special characters in $allowed_chars.
+        $extra = '';
+        foreach ($allowed_chars as $char) {
+            $extra .= preg_quote($char, '/');
+        }
+        $pattern = '/[^a-zA-Z0-9\s' . $extra . ']/u';
 
         // Replace any characters that are not in the allowed list
         $name = preg_replace($pattern, '', $name);
