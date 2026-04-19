@@ -71,8 +71,10 @@ class Url extends Trongate {
      *
      * @return int The number of URL segments after the base URL.
      */
-    public function get_num_segments(): int {
-        return count(SEGMENTS);
+    function get_num_segments(): int {
+        $url_path = str_replace(BASE_URL, '', current_url());
+        $url_segments = explode('/', $url_path);
+        return count($url_segments);
     }
 
     /**

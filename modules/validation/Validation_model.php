@@ -532,11 +532,8 @@ class Validation_model extends Model {
      * @return string The language code (e.g., 'en', 'fr', 'es')
      */
     private function get_validation_language(): string {
-        if (isset($_SESSION['validation_lang'])) {
-            return $_SESSION['validation_lang'];
-        }
-
-        return (defined('VALIDATION_LANG')) ? VALIDATION_LANG : 'en';
+        $this->module('language');
+        return $this->language->get_language();
     }
 
     /**

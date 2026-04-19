@@ -242,13 +242,8 @@ let trongateMXOpeningModal = false;
                 // Execute mx-on-timeout function if specified
                 const onTimeoutFunction = element.getAttribute('mx-on-timeout');
                 if (onTimeoutFunction) {
-                    // Create a custom event without requiring the original event
-                    const timeoutEvent = {
-                        target: element,
-                        type: 'timeout',
-                        detail: { http }
-                    };
-                    Utils.executeMXFunction(onTimeoutFunction, timeoutEvent);
+                    const customEvent = Utils.createMXEvent(element, event, 'timeout', { http });
+                    Utils.executeMXFunction(onTimeoutFunction, customEvent);
                 }
             };
         },
@@ -812,15 +807,10 @@ let trongateMXOpeningModal = false;
             return tempContainer.innerHTML;
         },
 
-        /**
-         * Handles validation errors in the documented Trongate format
-         * Expected format: [{ field: "email", messages: ["error1", "error2"] }]
-         */
         handleValidationErrors(containingForm, validationErrors) {
-            // Remove existing error classes and containers
             containingForm.querySelectorAll('.form-field-validation-error')
                 .forEach(field => field.classList.remove('form-field-validation-error'));
-            containingForm.querySelectorAll('.validation-errors')
+            containingForm.querySelectorAll('.validation-error-report')
                 .forEach(report => report.remove());
 
             let firstErrorElement = null;
@@ -828,39 +818,70 @@ let trongateMXOpeningModal = false;
             validationErrors.forEach(error => {
                 const field = containingForm.querySelector(`[name="${error.field}"]`);
                 if (field) {
-                    // Add error class to the field
                     field.classList.add('form-field-validation-error');
-                    
-                    // Track first error field for scrolling
+
+                    const errorContainer = document.createElement('div');
+                    errorContainer.className = 'validation-error-report';
+
+                    error.messages.forEach(message => {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.innerHTML = '● ' + Utils.escapeHtml(message);
+                        errorContainer.appendChild(errorDiv);
+                    });
+
+                    // Find the closest ancestor with 'flex-row' class that's inside or is the form itself
+                    const closestFlexRow = field.closest('.flex-row');
+
+                    if (closestFlexRow && (containingForm === closestFlexRow || containingForm.contains(closestFlexRow))) {
+                        // 1. Traverse back from the erroneous form field to find a 'target label'
+                        let targetLabel = null;
+                        let currentElement = field.previousElementSibling;
+
+                        while (currentElement && currentElement.tagName.toLowerCase() !== 'label') {
+                            // If we hit another form field or the start of the form, stop looking for a label
+                            if (currentElement.tagName.toLowerCase().match(/(input|select|textarea)/) || currentElement === null) {
+                                break;
+                            }
+                            currentElement = currentElement.previousElementSibling;
+                        }
+
+                        if (currentElement && currentElement.tagName.toLowerCase() === 'label') {
+                            // If a target label is found, insert the errorContainer immediately after the form label
+                            targetLabel.parentNode.insertBefore(errorContainer, targetLabel.nextSibling);
+                        } else {
+                            // OTHERWISE, search for a containing element that is WITHIN containingForm with a class of 'flex-row'
+                            const innerFlexRow = field.closest('.flex-row');
+
+                            if (innerFlexRow && containingForm.contains(innerFlexRow)) {
+                                // If found, insert before this containing element
+                                innerFlexRow.parentNode.insertBefore(errorContainer, innerFlexRow);
+                            } else {
+                                // OTHERWISE, insert the errorContainer before the form itself
+                                containingForm.parentNode.insertBefore(errorContainer, containingForm);
+                            }
+                        }
+                    } else {
+                        // If no flex-row within or as the form, insert before the field itself
+                        field.parentNode.insertBefore(errorContainer, field);
+                    }
+
+                    // Set the first error element for potential focus
                     if (!firstErrorElement) {
                         firstErrorElement = field;
                     }
 
                     // Special handling for checkbox or radio inputs
                     if (field.type === "checkbox" || field.type === "radio") {
-                        let parentContainer = field.closest("div");
+                        let parentContainer = field.closest("div"); // Assuming checkbox/radio is wrapped in a div for styling
                         if (parentContainer) {
                             parentContainer.classList.add("form-field-validation-error");
+                            // Note: Setting inline styles like this is usually not recommended. Consider using CSS classes.
+                            parentContainer.style.textIndent = "7px";
                         }
                     }
-
-                    // Create error container as UL with appropriate classes
-                    const errorList = document.createElement('ul');
-                    errorList.className = 'validation-errors validation-errors--inline';
-
-                    // Add each error message as an LI
-                    error.messages.forEach(message => {
-                        const errorItem = document.createElement('li');
-                        errorItem.textContent = Utils.escapeHtml(message);
-                        errorList.appendChild(errorItem);
-                    });
-
-                    // Position the error list correctly (using your preserved logic)
-                    this.positionErrorList(errorList, field, containingForm);
                 }
             });
 
-            // Scroll to first error
             if (firstErrorElement) {
                 setTimeout(() => {
                     firstErrorElement.scrollIntoView({
@@ -870,7 +891,6 @@ let trongateMXOpeningModal = false;
                 }, 100);
             }
 
-            // Handle mx-after-validation callback
             const functionName = containingForm.getAttribute('mx-after-validation');
             if (functionName) {
                 const customEvent = Utils.createMXEvent(containingForm, event, 'afterValidation', {
@@ -878,43 +898,7 @@ let trongateMXOpeningModal = false;
                 });
                 Utils.executeMXFunction(functionName, customEvent);
             }
-        },
 
-        // NEW: Helper function for positioning error lists
-        positionErrorList(errorList, field, containingForm) {
-            // Find the label for this field (if it exists)
-            let label = null;
-            
-            // Look for label that's directly before the field
-            let prev = field.previousElementSibling;
-            while (prev) {
-                if (prev.tagName.toLowerCase() === 'label') {
-                    label = prev;
-                    break;
-                }
-                // Stop if we hit another form field
-                if (prev.tagName.toLowerCase().match(/^(input|select|textarea|button)$/)) {
-                    break;
-                }
-                prev = prev.previousElementSibling;
-            }
-            
-            // Find the closest flex-row container (if any)
-            const flexRow = field.closest('.flex-row');
-            
-            // Position based on available containers
-            if (label && containingForm.contains(label)) {
-                // Insert after the label
-                label.parentNode.insertBefore(errorList, label.nextSibling);
-            } 
-            else if (flexRow && containingForm.contains(flexRow)) {
-                // Insert before the flex-row
-                flexRow.parentNode.insertBefore(errorList, flexRow);
-            } 
-            else {
-                // Insert before the field itself
-                field.parentNode.insertBefore(errorList, field);
-            }
         },
 
         removeCloak() {
@@ -956,26 +940,19 @@ let trongateMXOpeningModal = false;
             }
         },
 
-        // Clears the new validation-errors elements
         clearExistingValidationErrors(containingForm) {
-            // Remove any summary error alerts (legacy support)
+            // Remove the 'validation-error-alert' element if it exists
             const validationErrorsAlert = document.querySelector('.validation-error-alert');
             if (validationErrorsAlert) {
                 validationErrorsAlert.remove();
             }
 
-            // Remove all validation error lists within the form
-            // This targets both inline and any potential summary lists
-            containingForm.querySelectorAll('.validation-errors')
+            // Remove 'validation-error-report' elements within the form
+            containingForm.querySelectorAll('.validation-error-report')
                 .forEach(el => el.remove());
 
-            // Remove the error class from all form fields
+            // Remove the 'form-field-validation-error' class from form fields
             containingForm.querySelectorAll('.form-field-validation-error')
-                .forEach(el => el.classList.remove('form-field-validation-error'));
-
-            // Optional: Remove any error classes from parent containers
-            // (useful for checkbox/radio styling that might have been added)
-            containingForm.querySelectorAll('.flex-row.form-field-validation-error')
                 .forEach(el => el.classList.remove('form-field-validation-error'));
         },
 
@@ -998,7 +975,7 @@ let trongateMXOpeningModal = false;
             // Is the trigger element inside a modal
             const containingModal = element.closest('.modal');
             if (containingModal) {
-                window.closeModal();
+                closeModal();
             }
 
             const modalId = typeof modalData === 'string' ? modalData : modalData.id;
@@ -1148,7 +1125,7 @@ let trongateMXOpeningModal = false;
                         destroyBtn.setAttribute('class', 'alt');
                         destroyBtn.innerText = 'Close';
                         destroyBtn.addEventListener('click', function() {
-                            window.closeModal();
+                            Modal.closeModal();
                             let targetModal = this.closest('.modal');
                             if (targetModal) {
                                 targetModal.remove();

@@ -55,7 +55,7 @@ class Validation extends Trongate {
      * @return void
      */
     public function set_language(string $lang): void {
-        $_SESSION['validation_lang'] = $lang;
+        $this->language->set_language($lang);
         $this->model->load_validation_language($lang);
     }
 
@@ -66,9 +66,7 @@ class Validation extends Trongate {
      * @return void
      */
     public function reset_language(): void {
-        if (isset($_SESSION['validation_lang'])) {
-            unset($_SESSION['validation_lang']);
-        }
+        $this->language->reset_language();
     }
 
     /**
@@ -284,12 +282,10 @@ class Validation extends Trongate {
     private function json_validation_errors(array $errors, int $http_code): string {
         http_response_code($http_code);
         header('Content-Type: application/json');
-        echo json_encode($errors);
 
         // RENDERED = DELETED
-        // unset($_SESSION['form_submission_errors']);
-        // die();
-        return '';
+        unset($_SESSION['form_submission_errors']);
+        return json_encode($errors);
     }
 
     /**
@@ -311,12 +307,12 @@ class Validation extends Trongate {
         $html .= '</ul>';
 
         // SURGICAL DELETION: Remove only this field's errors
-        // unset($_SESSION['form_submission_errors'][$field]);
+        unset($_SESSION['form_submission_errors'][$field]);
 
-        // // Cleanup: If the array is now empty, remove the parent key
-        // if (count($_SESSION['form_submission_errors']) === 0) {
-        //     unset($_SESSION['form_submission_errors']);
-        // }
+        // Cleanup: If the array is now empty, remove the parent key
+        if (count($_SESSION['form_submission_errors']) === 0) {
+            unset($_SESSION['form_submission_errors']);
+        }
 
         return $html;
     }
@@ -340,7 +336,7 @@ class Validation extends Trongate {
             }
         }
 
-        $html = '<ul class="validation-errors validation-errors--summary">' . $items . '</ul>';
+        $html = ($items !== '') ? '<ul class="validation-errors validation-errors--summary">' . $items . '</ul>' : '';
 
         // RENDERED = DELETED
         unset($_SESSION['form_submission_errors']);
