@@ -172,21 +172,16 @@ class Trongate {
         }
 
         $view_path = $this->get_view_path($view, $module_name);
-
-        $render_callback = function() use ($view_path, $data) {
-            extract($data);
-            require $view_path;
-        };
-        $render_callback = $render_callback->bindTo($this, get_class($this));
+        extract($data);
 
         if ($return_as_str) {
             // Output as string
             ob_start();
-            $render_callback();
+            require $view_path;
             return ob_get_clean();
         } else {
             // Output view file
-            $render_callback();
+            require $view_path;
             return null;
         }
     }
